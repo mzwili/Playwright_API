@@ -1,6 +1,6 @@
 import { test, expect } from '@playwright/test';
 
-test.describe('Products API Tests', () => {
+test.describe.serial('Products API Tests', () => {
 
     // 🔹 Reusable variables
     let baseURL;
@@ -13,10 +13,30 @@ test.describe('Products API Tests', () => {
         baseURL = 'https://fakestoreapi.com';
     });
 
+    // Safe request wrapper
+    async function getProducts(request) {
+        const res = await request.get(`${baseURL}/products`, {
+            headers: {
+                'Accept': 'application/json',
+                'User-Agent': 'Mozilla/5.0 Playwright API Tests'
+            }
+        });
+
+        // validate response BEFORE parsing
+        const contentType = res.headers()['content-type'] || '';
+
+        expect(contentType, 'API returned HTML instead of JSON — likely rate limited')
+            .toContain('application/json');
+
+        const json = await res.json();
+        return { res, json };
+    }
+
     // Runs before EACH test
     test.beforeEach(async ({ request }) => {
-        response = await request.get(`${baseURL}/products`);
-        body = await response.json();
+        const data = await getProducts(request);
+        response = data.res;
+        body = data.json;
         product = body[0];
     });
 
